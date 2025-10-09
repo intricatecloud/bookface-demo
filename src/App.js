@@ -1,70 +1,32 @@
 import React from 'react'
-import {BrowserRouter, Switch, Route, Link} from 'react-router-dom'
-import {Dropdown} from 'react-bootstrap'
+import {BrowserRouter, Switch, Route} from 'react-router-dom'
+import Dashboard from './components/Dashboard'
+import LoginPage from './components/LoginPage'
+import LandingPage from './components/LandingPage'
+import NavBar from './components/NavBar'
+import gapiUtils from './gapi-utils'
 import './App.css'
 
-const Dashboard = () => {
-    const authInstance = window.gapi.auth2.getAuthInstance()
-    const user = authInstance.currentUser.get()
-    const profile = user.getBasicProfile()
-    const email = profile.getEmail()
-    const imageUrl = profile.getImageUrl()
-
-    return (
-        <>
-            <nav>
-                <div>BookFace</div>
-                <img className="push" src={imageUrl}/>
-                <Dropdown>
-                    <Dropdown.Toggle as="a">
-                        {email}
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu>
-                        <Dropdown.Item onClick={authInstance.signOut}>Sign out</Dropdown.Item>
-                    </Dropdown.Menu>
-                </Dropdown>
-            </nav>
-            <div className="container">
-                <p>Look at this bookface</p>
-                <img src="https://christianlauersen.files.wordpress.com/2015/11/img_0423.png" />
-            </div>
-        </>
-    )
-}
-
-class LoginPage extends React.Component {
-    componentDidMount() {
-        window.gapi.load('signin2', () => {
-            window.gapi.signin2.render('login-button')
-        })
-    }
-
-    render() {
-        return (
-            <div className="container">
-                <div id="login-button">Sign in with Google</div>
-            </div>
-        )
-    }
-}
-
-const LandingPage = () => {
-    return (
-        <div className="container">
-            <h1>BookFace</h1>
-            <p>Leading provider of bookfaces</p>
-            <Link to="/dashboard">Go to Dashboard</Link>
-        </div>
-    )
-}
-
 class App extends React.Component {
-    constructor(props) {
-        super(props)
+    state = {
+        isSignedIn: null,
+        gapiError: null,
+    }
 
-        this.state = {
-            isSignedIn: null
+    signOut() {
+        gapiUtils.signOut()
+    }
+
+    async componentDidMount() {
+        await gapiUtils.load()
+        const onSignedIn = (profile) => {
+            this.setState({isSignedIn: !!profile, profile})
         }
+        await gapiUtils.initialize(onSignedIn)
+            .then(onSignedIn)
+            .catch((err) => {
+                this.setState({gapiError: err})
+            })
     }
 
     initializeGoogleSignIn() {
@@ -92,25 +54,39 @@ class App extends React.Component {
 
     ifUserSignedIn(Component) {
         if (this.state.isSignedIn === null) {
-            return (
-                <h1>Checking if you're signed in...</h1>
-            )
+            if (this.state.gapiError) {
+                return (
+                    <div class="container">
+                        <p>Couldn't initialize Google Sign-In</p>
+                        <p>Error: {this.state.gapiError.error}</p>
+                        <p>Details: {this.state.gapiError.details}</p>
+                    </div>
+                )
+            } else {
+                return (
+                    <div class="container">Checking if you're signed in...</div>
+                )
+            }
+
         }
-        return this.state.isSignedIn ?
-            <Component/> :
-            <LoginPage/>
+        return this.state.isSignedIn ? <Component {...props} /> : <LoginPage/>
     }
 
     render() {
+        const email = this.state.isSignedIn ? this.state.profile.getEmail() : ''
+        const imageUrl = this.state.isSignedIn ? this.state.profile.getImageUrl(): ''
         return (
-            <BrowserRouter>
-                <Switch>
-                    <Route exact path="/">
-                        <LandingPage/>
-                    </Route>
-                    <Route path="/dashboard" render={() => this.ifUserSignedIn(Dashboard)}/>
-                </Switch>
-            </BrowserRouter>
+            <div>
+                <NavBar email={email} imageUrl={imageUrl} signOut={() => this.signOut()}/>
+                <BrowserRouter>
+                    <Switch>
+                        <Route exact path="/">
+                            <LandingPage />
+                        </Route>
+                        <Route path="/dashboard" render={() => this.ifUserSignedIn(Dashboard, {profile: this.state.profile})}/>
+                    </Switch>
+                </BrowserRouter>
+            </div>
         )
     }
 }

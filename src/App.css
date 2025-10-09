@@ -1,6 +1,5 @@
 nav {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
   background: black;
   color: white;
@@ -24,6 +23,7 @@ nav > img {
   justify-content: center;
   align-items: center;
   flex-direction: column;
+  padding: 2em;
 }
 
 .container > img {
@@ -68,4 +68,16 @@ nav > img {
   to {
     transform: rotate(360deg);
   }
+}
+
+.login-panel {
+  border-radius: 4px;
+  width: 25em;
+  height: 15em;
+  display: flex;
+  background-color: gainsboro;
+  justify-content: space-evenly;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
 }
